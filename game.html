@@ -220,6 +220,7 @@ let currentHintType = ''; // 'description' or 'paraphrase'
 let shownParaphraseLines = '';
 let paraphraseStartIndex = -1;
 let paraphraseLineCount = 0;
+let selectedParaphraseLines = [];
 
 function loadSongs() {
   try {
@@ -324,29 +325,54 @@ function generateDescription(lyrics) {
 
 function getRandomConsecutiveLines(text, minLines = 1, maxLines = 4) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-  if (lines.length === 0) return { text: '', start: -1, count: 0 };
+  if (lines.length === 0) return { text: '', start: -1, count: 0, selected: [] };
   const count = Math.min(lines.length, minLines + Math.floor(Math.random() * (maxLines - minLines + 1)));
   const start = Math.floor(Math.random() * (lines.length - count + 1));
   const selected = lines.slice(start, start + count);
-  return { text: selected.join('\n'), start, count };
+  return { text: selected.join('\n'), start, count, selected };
 }
 
-function highlightLines(fullText, startIndex, lineCount) {
-  const lines = fullText.split(/\r?\n/);
-  const nonEmpty = [];
-  const mapping = []; // map non-empty index to original line index
-  lines.forEach((line, i) => {
-    if (line.trim().length > 0) {
-      mapping.push(i);
-      nonEmpty.push(line);
+function findMatchingLines(originalText, selectedLines) {
+  // 在原始歌詞中找出與 selectedLines 最相似的連續區塊
+  const origLines = originalText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (origLines.length === 0 || selectedLines.length === 0) return new Set();
+
+  let bestStart = 0;
+  let bestScore = -1;
+  const window = selectedLines.length;
+
+  for (let i = 0; i <= origLines.length - window; i++) {
+    let score = 0;
+    for (let j = 0; j < window; j++) {
+      const a = origLines[i + j] || '';
+      const b = selectedLines[j] || '';
+      // 簡單相似度：共同字元比例
+      const common = [...a].filter(c => b.includes(c)).length;
+      score += common / Math.max(a.length, b.length, 1);
     }
+    if (score > bestScore) {
+      bestScore = score;
+      bestStart = i;
+    }
+  }
+
+  // 回傳原始文字中對應的行索引（含空行）
+  const allLines = originalText.split(/\r?\n/);
+  const nonEmptyMap = [];
+  allLines.forEach((line, idx) => {
+    if (line.trim().length > 0) nonEmptyMap.push(idx);
   });
-  if (startIndex < 0 || lineCount <= 0) return escapeHtml(fullText);
+
   const highlightSet = new Set();
-  for (let i = 0; i < lineCount; i++) {
-    const origIdx = mapping[startIndex + i];
+  for (let j = 0; j < window; j++) {
+    const origIdx = nonEmptyMap[bestStart + j];
     if (origIdx !== undefined) highlightSet.add(origIdx);
   }
+  return highlightSet;
+}
+
+function highlightLinesBySet(fullText, highlightSet) {
+  const lines = fullText.split(/\r?\n/);
   return lines.map((line, i) => {
     const escaped = escapeHtml(line);
     return highlightSet.has(i) ? `<mark style="background:#fff59d; padding:2px 4px;">${escaped}</mark>` : escaped;
@@ -406,6 +432,7 @@ function nextSong() {
     shownParaphraseLines = displayText;
     paraphraseStartIndex = result.start;
     paraphraseLineCount = result.count;
+    selectedParaphraseLines = result.selected || [];
   } else if (currentHintType === 'description') {
     displayText = currentSong.description.trim();
   } else {
@@ -605,10 +632,10 @@ function showFullAnswer() {
       <p><strong>歌名：</strong>${escapeHtml(currentSong.name)}</p>
       <p><strong>歌手：</strong>${escapeHtml(currentSong.singer)}</p>
       <p><strong>原始歌詞：</strong></p>
-      <pre>${currentHintType === 'paraphrase' ? highlightLines(currentSong.lyrics, paraphraseStartIndex, paraphraseLineCount) : escapeHtml(currentSong.lyrics)}</pre>
+      <pre>${currentHintType === 'paraphrase' ? highlightLinesBySet(currentSong.lyrics, findMatchingLines(currentSong.lyrics, selectedParaphraseLines)) : escapeHtml(currentSong.lyrics)}</pre>
       ${currentHintType === 'paraphrase' && currentSong.paraphrase ? `
         <p><strong>同義改寫（完整，黃色為剛才顯示的部分）：</strong></p>
-        <pre>${highlightLines(currentSong.paraphrase, paraphraseStartIndex, paraphraseLineCount)}</pre>
+        <pre>${highlightLinesBySet(currentSong.paraphrase, findMatchingLines(currentSong.paraphrase, selectedParaphraseLines))}</pre>
       ` : ''}
       ${currentHintType === 'description' && currentSong.description ? `
         <p><strong>詳細解釋：</strong>${escapeHtml(currentSong.description)}</p>
