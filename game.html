@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>歌詞猜歌遊戲</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    margin: 0;
+    padding: 48px 16px;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 768px;
+    margin: 0 auto;
+    background: #1e293b;
+    border-radius: 16px;
+    padding: 32px;
+    border: 1px solid #334155;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+    text-align: center;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(to right, #ec4899, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle { color: #94a3b8; margin-bottom: 20px; }
+  a { color: #a78bfa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .score { font-size: 18px; margin: 16px 0; color: #cbd5e1; }
+  button, .btn-label {
+    padding: 12px 24px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 15px;
+    transition: all 0.2s;
+    margin: 6px;
+  }
+  .btn-primary { background: #7c3aed; color: white; }
+  .btn-primary:hover { background: #6d28d9; }
+  .btn-primary:disabled { background: #475569; cursor: not-allowed; }
+  .btn-secondary { background: #475569; color: white; }
+  .btn-secondary:hover { background: #334155; }
+  .btn-success { background: #059669; color: white; }
+  .btn-success:hover { background: #047857; }
+  .lyrics-box {
+    background: #0f172a;
+    padding: 24px;
+    border-radius: 12px;
+    font-size: 17px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    margin: 20px 0;
+    min-height: 120px;
+    border: 1px solid #334155;
+    text-align: left;
+    color: #e2e8f0;
+  }
+  input[type="text"] {
+    width: 60%;
+    padding: 12px 16px;
+    font-size: 16px;
+    background: #0f172a;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    color: #e2e8f0;
+    margin: 10px;
+  }
+  input[type="text"]:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+  }
+  .result {
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 12px;
+    text-align: left;
+  }
+  .correct { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+  .wrong { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
+  .answer-info { margin-top: 12px; }
+  .answer-info pre {
+    background: #0f172a;
+    padding: 12px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    max-height: 280px;
+    overflow-y: auto;
+    color: #cbd5e1;
+    border: 1px solid #334155;
+  }
+  mark { background: #fef08a; color: #1e293b; padding: 2px 4px; border-radius: 3px; }
+  iframe { margin-top: 15px; max-width: 100%; border-radius: 8px; }
+  #completePage h2 { color: #6ee7b7; }
+
+  /* 特效容器 */
+  #effectLayer {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+  }
+  /* 特效 1: 彩帶 */
+  .confetti {
+    position: absolute;
+    width: 10px; height: 14px;
+    animation: confettiFall 2.5s ease-out forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+  /* 特效 2: 煙火 */
+  .firework {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    animation: fireworkBurst 1.2s ease-out forwards;
+  }
+  @keyframes fireworkBurst {
+    0% { transform: scale(0); opacity: 1; }
+    50% { opacity: 1; }
+    100% { transform: scale(3); opacity: 0; }
+  }
+  /* 特效 3: 星星閃爍 */
+  .sparkle {
+    position: absolute;
+    width: 8px; height: 8px;
+    background: #fff;
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    animation: sparkleTwinkle 1.5s ease-out forwards;
+  }
+  @keyframes sparkleTwinkle {
+    0% { transform: scale(0) rotate(0deg); opacity: 1; }
+    50% { transform: scale(1.5) rotate(180deg); opacity: 1; }
+    100% { transform: scale(0) rotate(360deg); opacity: 0; }
+  }
+  /* 特效 4: 光暈脈衝 */
+  .glow-pulse {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 200px; height: 200px;
+    margin: -100px 0 0 -100px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(236,72,153,0.6), transparent 70%);
+    animation: glowExpand 1.8s ease-out forwards;
+  }
+  @keyframes glowExpand {
+    0% { transform: scale(0.3); opacity: 1; }
+    100% { transform: scale(4); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="effectLayer"></div>
+<div class="container">
+  <h1>🎵 歌詞猜歌遊戲</h1>
+  <p class="subtitle">隨機顯示提示，猜出歌名！</p>
+  <p><a href="songs.html">← 返回歌曲資料庫管理</a></p>
+
+  <div class="score" id="score">得分：0 / 0</div>
+  <div>
+    <label id="loadJsonLabel" class="btn-label btn-secondary" style="display:none;">
+      載入 songs.json
+      <input type="file" id="jsonFile" accept=".json" style="display:none;" onchange="loadJSONFile(this)">
+    </label>
+    <button id="nextBtn" class="btn-primary" onclick="nextSong()">開始 / 下一題</button>
+  </div>
+
+  <div id="gameArea" style="display:none;">
+    <div class="lyrics-box" id="lyricsDisplay"></div>
+    <div>
+      <input type="text" id="guessInput" placeholder="輸入歌名..." onkeypress="if(event.key==='Enter') onGuessAction()">
+      <button id="guessBtn" class="btn-primary" onclick="onGuessAction()">提交答案</button>
+      <button id="revealBtn" class="btn-secondary" onclick="revealAnswer()">開估</button>
+      <span id="attemptsLeft" style="margin-left:10px; color:#94a3b8;"></span>
+    </div>
+    <div id="result" class="result"></div>
+  </div>
+
+  <div id="noData" style="display:none; color:#f87171; margin-top:20px;">
+    <p>尚未有歌曲資料！請先到 <a href="songs.html">歌曲資料庫</a> 新增歌曲，或載入 songs.json。</p>
+  </div>
+
+  <div id="completePage" style="display:none; padding:30px;">
+    <h2>🎉 全部歌曲已完成！</h2>
+    <p id="finalScore" style="font-size:20px; margin:15px 0; color:#cbd5e1;"></p>
+    <button class="btn-success" onclick="restartGame()">重新開始</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'songsData';
+let songs = [];
+let remainingSongs = [];
+let currentSong = null;
+let correctCount = 0;
+let totalCount = 0;
+let attemptsLeft = 3;
+let hasFinished = false;
+let currentHintType = ''; // 'description' or 'paraphrase'
+let shownParaphraseLines = '';
+let paraphraseStartIndex = -1;
+let paraphraseLineCount = 0;
+
+function loadSongs() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function getVideoId(url) {
+  if (!url) return null;
+  const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]{11}).*/;
+  const match = url.match(regExp);
+  return match ? match[2] : null;
+}
+
+function getRandomLines(lyrics, count = 4) {
+  const lines = lyrics.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length <= count) return lines.join('\n');
+  const start = Math.floor(Math.random() * (lines.length - count + 1));
+  return lines.slice(start, start + count).join('\n');
+}
+
+function loadJSONFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('格式不正確');
+      songs = data;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); // 同步到 localStorage
+      startNewSession();
+      alert(`成功載入 ${songs.length} 首歌曲！`);
+      document.getElementById('noData').style.display = 'none';
+    } catch (err) {
+      alert('載入失敗：JSON 格式錯誤');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+async function tryLoadJSON() {
+  // 頁面載入時自動讀取同資料夾的 songs.json
+  const loadLabel = document.getElementById('loadJsonLabel');
+  try {
+    const res = await fetch('songs.json');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        songs = data;
+        console.log('已從 songs.json 自動載入', songs.length, '首');
+        startNewSession();
+        document.getElementById('noData').style.display = 'none';
+        loadLabel.style.display = 'none'; // 成功載入，隱藏按鈕
+        return true;
+      }
+    }
+  } catch (e) {
+    console.log('無法自動讀取 songs.json', e);
+  }
+  // 無法自動載入 → 顯示手動載入按鈕
+  loadLabel.style.display = 'inline-block';
+  // 退回 localStorage
+  songs = loadSongs();
+  if (songs.length > 0) {
+    startNewSession();
+    document.getElementById('noData').style.display = 'none';
+    return true;
+  }
+  return false;
+}
+
+function startNewSession() {
+  remainingSongs = [...songs]; // 複製一份尚未播放的歌曲
+  correctCount = 0;
+  totalCount = 0;
+  updateScore();
+  document.getElementById('completePage').style.display = 'none';
+  document.getElementById('gameArea').style.display = 'none';
+  document.getElementById('nextBtn').disabled = false;
+  document.getElementById('nextBtn').textContent = '開始 / 下一題';
+}
+
+function restartGame() {
+  startNewSession();
+  nextSong();
+}
+
+function generateDescription(lyrics) {
+  if (!lyrics) return '';
+  const lines = lyrics.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length === 0) return '';
+  // 隨機抽取 3 句（或全部）組成描述
+  const count = Math.min(3, lines.length);
+  const shuffled = [...lines].sort(() => Math.random() - 0.5);
+  const sample = shuffled.slice(0, count).join('；');
+  return `這段歌詞描繪了：${sample}${lines.length > count ? '……' : ''}`;
+}
+
+function getRandomConsecutiveLines(text, minLines = 1, maxLines = 4) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length === 0) return { text: '', start: -1, count: 0 };
+  const count = Math.min(lines.length, minLines + Math.floor(Math.random() * (maxLines - minLines + 1)));
+  const start = Math.floor(Math.random() * (lines.length - count + 1));
+  const selected = lines.slice(start, start + count);
+  return { text: selected.join('\n'), start, count };
+}
+
+function highlightLines(fullText, startIndex, lineCount) {
+  const lines = fullText.split(/\r?\n/);
+  const nonEmpty = [];
+  const mapping = []; // map non-empty index to original line index
+  lines.forEach((line, i) => {
+    if (line.trim().length > 0) {
+      mapping.push(i);
+      nonEmpty.push(line);
+    }
+  });
+  if (startIndex < 0 || lineCount <= 0) return escapeHtml(fullText);
+  const highlightSet = new Set();
+  for (let i = 0; i < lineCount; i++) {
+    const origIdx = mapping[startIndex + i];
+    if (origIdx !== undefined) highlightSet.add(origIdx);
+  }
+  return lines.map((line, i) => {
+    const escaped = escapeHtml(line);
+    return highlightSet.has(i) ? `<mark style="background:#fff59d; padding:2px 4px;">${escaped}</mark>` : escaped;
+  }).join('\n');
+}
+
+function nextSong() {
+  if (songs.length === 0) {
+    document.getElementById('noData').style.display = 'block';
+    document.getElementById('gameArea').style.display = 'none';
+    document.getElementById('completePage').style.display = 'none';
+    return;
+  }
+
+  if (remainingSongs.length === 0) {
+    // 全部歌曲已播放完畢
+    document.getElementById('gameArea').style.display = 'none';
+    document.getElementById('completePage').style.display = 'block';
+    document.getElementById('finalScore').textContent = 
+      `最終得分：${correctCount} / ${totalCount}`;
+    document.getElementById('nextBtn').disabled = true;
+    return;
+  }
+
+  document.getElementById('noData').style.display = 'none';
+  document.getElementById('completePage').style.display = 'none';
+  document.getElementById('gameArea').style.display = 'block';
+
+  // 隨機從尚未播放的歌曲中抽一首
+  const idx = Math.floor(Math.random() * remainingSongs.length);
+  currentSong = remainingSongs.splice(idx, 1)[0];
+
+  attemptsLeft = 3;
+  hasFinished = false;
+  document.getElementById('attemptsLeft').textContent = `剩餘次數：${attemptsLeft}`;
+  document.getElementById('guessBtn').textContent = '提交答案';
+  document.getElementById('revealBtn').disabled = false;
+  // 隨機選擇 description 或 paraphrase
+  const hasPara = currentSong.paraphrase && currentSong.paraphrase.trim();
+  const hasDesc = currentSong.description && currentSong.description.trim();
+  let displayText = '';
+  currentHintType = '';
+  shownParaphraseLines = '';
+
+  if (hasPara && hasDesc) {
+    currentHintType = Math.random() < 0.5 ? 'paraphrase' : 'description';
+  } else if (hasPara) {
+    currentHintType = 'paraphrase';
+  } else if (hasDesc) {
+    currentHintType = 'description';
+  }
+
+  if (currentHintType === 'paraphrase') {
+    const result = getRandomConsecutiveLines(currentSong.paraphrase, 1, 4);
+    displayText = result.text;
+    shownParaphraseLines = displayText;
+    paraphraseStartIndex = result.start;
+    paraphraseLineCount = result.count;
+  } else if (currentHintType === 'description') {
+    displayText = currentSong.description.trim();
+  } else {
+    displayText = generateDescription(currentSong.lyrics);
+  }
+
+  document.getElementById('lyricsDisplay').textContent = displayText;
+  document.getElementById('guessInput').value = '';
+  document.getElementById('guessInput').disabled = false;
+  document.getElementById('result').innerHTML = '';
+  document.getElementById('result').className = 'result';
+  document.getElementById('nextBtn').disabled = true;
+}
+
+function normalizeName(name) {
+  if (!name) return '';
+  return name
+    .replace(/[《》「」『』【】（）()]/g, '')
+    .replace(/\s+/g, '')
+    .replace(/Renew Me|RenewMe/gi, '')
+    .toLowerCase()
+    .trim();
+}
+
+function isNameMatch(guess, correctName) {
+  const g = normalizeName(guess);
+  const c = normalizeName(correctName);
+  if (!g || !c) return false;
+  // 完全相同，或其中一方包含另一方（處理「更新我」vs「《更新我》 Renew Me」）
+  return g === c || c.includes(g) || g.includes(c);
+}
+
+function revealAnswer() {
+  if (hasFinished || !currentSong) return;
+  hasFinished = true;
+  totalCount++;
+  const resultDiv = document.getElementById('result');
+  resultDiv.className = 'result wrong';
+  resultDiv.innerHTML = `<h3>📖 開估</h3>`;
+  showFullAnswer();
+  document.getElementById('guessInput').disabled = true;
+  document.getElementById('guessBtn').textContent = '下一題';
+  document.getElementById('revealBtn').disabled = true;
+  document.getElementById('nextBtn').disabled = false;
+  updateScore();
+}
+
+function onGuessAction() {
+  if (hasFinished) {
+    nextSong();
+  } else {
+    checkGuess();
+  }
+}
+
+function checkGuess() {
+  if (hasFinished || !currentSong || attemptsLeft <= 0) return;
+  const guess = document.getElementById('guessInput').value.trim();
+  if (!guess) {
+    alert('請輸入歌名');
+    return;
+  }
+
+  const isCorrect = isNameMatch(guess, currentSong.name);
+  const resultDiv = document.getElementById('result');
+
+  if (isCorrect) {
+    hasFinished = true;
+    correctCount++;
+    totalCount++;
+    resultDiv.className = 'result correct';
+    resultDiv.innerHTML = `<h3>🎉 答對了！</h3>`;
+    showFullAnswer();
+    document.getElementById('guessInput').disabled = true;
+    document.getElementById('guessBtn').textContent = '下一題';
+    document.getElementById('revealBtn').disabled = true;
+    document.getElementById('nextBtn').disabled = false;
+    updateScore();
+    return;
+  }
+
+  // 答錯
+  attemptsLeft--;
+  document.getElementById('attemptsLeft').textContent = `剩餘次數：${attemptsLeft}`;
+  document.getElementById('guessInput').value = '';
+
+  if (attemptsLeft > 0) {
+    resultDiv.className = 'result wrong';
+    resultDiv.innerHTML = `<p>答錯了，還有 ${attemptsLeft} 次機會</p>`;
+  } else {
+    // 用完 3 次
+    hasFinished = true;
+    totalCount++;
+    resultDiv.className = 'result wrong';
+    resultDiv.innerHTML = `<h3>❌ 機會用完了！正確答案是：</h3>`;
+    showFullAnswer();
+    document.getElementById('guessInput').disabled = true;
+    document.getElementById('guessBtn').textContent = '下一題';
+    document.getElementById('revealBtn').disabled = true;
+    document.getElementById('nextBtn').disabled = false;
+    updateScore();
+  }
+}
+
+function playRandomEffect() {
+  const layer = document.getElementById('effectLayer');
+  layer.innerHTML = '';
+  const effect = Math.floor(Math.random() * 4);
+
+  if (effect === 0) {
+    // 彩帶
+    for (let i = 0; i < 40; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + '%';
+      c.style.background = `hsl(${Math.random()*360}, 80%, 60%)`;
+      c.style.animationDelay = Math.random() * 0.5 + 's';
+      layer.appendChild(c);
+    }
+  } else if (effect === 1) {
+    // 煙火
+    const colors = ['#ff6b6b','#feca57','#48dbfb','#ff9ff3','#54a0ff'];
+    for (let i = 0; i < 25; i++) {
+      const f = document.createElement('div');
+      f.className = 'firework';
+      f.style.left = (40 + Math.random() * 20) + '%';
+      f.style.top = (30 + Math.random() * 20) + '%';
+      f.style.background = colors[Math.floor(Math.random()*colors.length)];
+      f.style.animationDelay = Math.random() * 0.3 + 's';
+      layer.appendChild(f);
+    }
+  } else if (effect === 2) {
+    // 星星
+    for (let i = 0; i < 30; i++) {
+      const s = document.createElement('div');
+      s.className = 'sparkle';
+      s.style.left = Math.random() * 100 + '%';
+      s.style.top = Math.random() * 80 + '%';
+      s.style.animationDelay = Math.random() * 0.4 + 's';
+      layer.appendChild(s);
+    }
+  } else {
+    // 光暈
+    for (let i = 0; i < 3; i++) {
+      const g = document.createElement('div');
+      g.className = 'glow-pulse';
+      g.style.animationDelay = i * 0.3 + 's';
+      layer.appendChild(g);
+    }
+  }
+  setTimeout(() => { layer.innerHTML = ''; }, 3000);
+}
+
+function showFullAnswer() {
+  playRandomEffect();
+  const resultDiv = document.getElementById('result');
+  const videoId = getVideoId(currentSong.youtube);
+  let embedHtml = '';
+  if (videoId) {
+    const nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`;
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    embedHtml = `
+      <div style="margin-top:15px;">
+        <iframe width="560" height="315" 
+          src="${nocookieUrl}" 
+          title="YouTube video player" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+          referrerpolicy="strict-origin-when-cross-origin" 
+          allowfullscreen>
+        </iframe>
+        <p style="margin-top:10px;">
+          <a href="${watchUrl}" target="_blank" rel="noopener" 
+             style="display:inline-block; padding:8px 16px; background:#ff0000; color:white; text-decoration:none; border-radius:4px;">
+            在 YouTube 開啟播放
+          </a>
+        </p>
+        <p style="font-size:13px; color:#888;">若嵌入播放器顯示錯誤，請點上方按鈕直接到 YouTube 播放。</p>
+      </div>`;
+  } else {
+    embedHtml = `<p>無法解析 YouTube 連結：<a href="${escapeHtml(currentSong.youtube)}" target="_blank">${escapeHtml(currentSong.youtube)}</a></p>`;
+  }
+
+  resultDiv.innerHTML += `
+    <div class="answer-info">
+      <p><strong>歌名：</strong>${escapeHtml(currentSong.name)}</p>
+      <p><strong>歌手：</strong>${escapeHtml(currentSong.singer)}</p>
+      <p><strong>原始歌詞：</strong></p>
+      <pre>${currentHintType === 'paraphrase' ? highlightLines(currentSong.lyrics, paraphraseStartIndex, paraphraseLineCount) : escapeHtml(currentSong.lyrics)}</pre>
+      ${currentHintType === 'paraphrase' && currentSong.paraphrase ? `
+        <p><strong>同義改寫（完整，黃色為剛才顯示的部分）：</strong></p>
+        <pre>${highlightLines(currentSong.paraphrase, paraphraseStartIndex, paraphraseLineCount)}</pre>
+      ` : ''}
+      ${currentHintType === 'description' && currentSong.description ? `
+        <p><strong>詳細解釋：</strong>${escapeHtml(currentSong.description)}</p>
+      ` : ''}
+      ${embedHtml}
+    </div>
+  `;
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = `得分：${correctCount} / ${totalCount}`;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+
+// 初始檢查
+window.onload = async function() {
+  const loaded = await tryLoadJSON();
+  if (!loaded) {
+    document.getElementById('noData').style.display = 'block';
+  }
+};
+</script>
+</body>
+</html>
+</body></html>
